@@ -1,0 +1,881 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Buffalo Bills Roster Quiz</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #eef1f6;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      background: #00338D;
+      color: white;
+      text-align: center;
+      padding: 22px 16px 18px;
+    }
+    header h1 { font-size: 1.8rem; font-weight: 800; letter-spacing: 0.3px; }
+    header p { margin-top: 5px; opacity: 0.85; font-size: 0.95rem; }
+
+    main {
+      flex: 1;
+      max-width: 900px;
+      margin: 0 auto;
+      width: 100%;
+      padding: 28px 16px 40px;
+    }
+
+    /* ── Start Screen ──────────────────────────────────────────── */
+    #start-screen {
+      background: white;
+      border-radius: 14px;
+      padding: 44px 36px;
+      text-align: center;
+      box-shadow: 0 2px 18px rgba(0,0,0,0.10);
+      max-width: 540px;
+      margin: 0 auto;
+    }
+    #start-screen h2 { font-size: 1.45rem; color: #00338D; margin-bottom: 14px; }
+    #start-screen .desc { color: #555; line-height: 1.65; margin-bottom: 18px; font-size: 0.97rem; }
+    .rules {
+      text-align: left;
+      list-style: none;
+      color: #444;
+      margin: 0 auto 28px;
+      max-width: 380px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .rules li {
+      display: flex;
+      gap: 10px;
+      font-size: 0.93rem;
+      line-height: 1.4;
+    }
+    .rules li .icon { flex-shrink: 0; }
+
+    .start-btn {
+      background: #00338D;
+      color: white;
+      border: none;
+      padding: 14px 44px;
+      font-size: 1.1rem;
+      font-weight: 700;
+      border-radius: 9px;
+      cursor: pointer;
+      transition: background 0.2s;
+      min-height: 48px;
+      touch-action: manipulation;
+    }
+    .start-btn:hover { background: #002270; }
+
+    /* ── Quiz Screen ───────────────────────────────────────────── */
+    #quiz-screen { display: none; }
+
+    .controls-card {
+      background: white;
+      border-radius: 14px;
+      padding: 20px 24px 16px;
+      box-shadow: 0 2px 18px rgba(0,0,0,0.09);
+      margin-bottom: 20px;
+      /* Stick to top so input stays visible while scrolling the roster */
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .top-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
+    }
+
+    .timer {
+      font-size: 2.6rem;
+      font-weight: 800;
+      color: #00338D;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 1px;
+      line-height: 1;
+      min-width: 5ch;
+    }
+    .timer.warning { color: #C60C30; }
+
+    .progress-info {
+      flex: 1;
+      text-align: center;
+    }
+    .progress-count {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #333;
+    }
+    .progress-count .num { color: #00338D; font-size: 1.25rem; }
+
+    .quit-btn {
+      background: #f2f2f2;
+      color: #555;
+      border: 1px solid #ddd;
+      padding: 9px 20px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: background 0.15s;
+      white-space: nowrap;
+      min-height: 44px;
+      touch-action: manipulation;
+    }
+    .quit-btn:hover { background: #e4e4e4; }
+
+    .progress-bar-wrap {
+      background: #eee;
+      border-radius: 4px;
+      height: 7px;
+      margin-bottom: 14px;
+    }
+    .progress-bar {
+      background: #00338D;
+      height: 100%;
+      border-radius: 4px;
+      width: 0%;
+      transition: width 0.4s ease;
+    }
+
+    .input-row { display: flex; gap: 10px; }
+
+    #guess-input {
+      flex: 1;
+      padding: 11px 14px;
+      font-size: 16px; /* must be ≥16px — iOS Safari zooms in on smaller inputs */
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
+      /* prevent iOS from rounding corners */
+      -webkit-appearance: none;
+    }
+    #guess-input:focus { border-color: #00338D; }
+    #guess-input.flash-correct { border-color: #18a558; background: #f0fdf4; }
+    #guess-input.flash-wrong   { border-color: #C60C30; background: #fff0f0; }
+
+    .guess-btn {
+      background: #00338D;
+      color: white;
+      border: none;
+      padding: 11px 20px;
+      font-size: 16px; /* match input to avoid tap-size mismatch */
+      font-weight: 600;
+      border-radius: 8px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.2s;
+      /* ensure minimum tap height on mobile */
+      min-height: 44px;
+      touch-action: manipulation; /* prevent double-tap zoom on button */
+    }
+    .guess-btn:hover:not(:disabled) { background: #002270; }
+    .guess-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    #feedback {
+      min-height: 22px;
+      margin-top: 8px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      transition: opacity 0.3s;
+    }
+    #feedback.correct { color: #18a558; }
+    #feedback.wrong   { color: #C60C30; }
+    #feedback.warn    { color: #9a6500; }
+
+    /* ── Roster Grid ───────────────────────────────────────────── */
+    #roster-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .pos-group {
+      background: white;
+      border-radius: 12px;
+      padding: 16px 20px;
+      box-shadow: 0 2px 14px rgba(0,0,0,0.07);
+    }
+
+    .pos-group-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .pos-badge {
+      background: #00338D;
+      color: white;
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+    .pos-group-name {
+      font-weight: 700;
+      color: #222;
+      font-size: 0.95rem;
+    }
+    .pos-group-tally {
+      margin-left: auto;
+      font-size: 0.8rem;
+      color: #aaa;
+      font-weight: 600;
+    }
+
+    .player-slots {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .slot {
+      border: 2px solid #e4e4e4;
+      border-radius: 8px;
+      padding: 7px 13px;
+      min-width: 130px;
+      background: #fafafa;
+      transition: border-color 0.25s, background 0.25s;
+    }
+    .slot-pos {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: #bbb;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .slot-name {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: #ccc;
+      margin-top: 1px;
+      white-space: nowrap;
+    }
+
+    /* found by player */
+    .slot.found {
+      border-color: #00338D;
+      background: #eaf0fb;
+      animation: pop 0.25s ease;
+    }
+    .slot.found .slot-pos  { color: #5a80c0; }
+    .slot.found .slot-name { color: #00338D; }
+
+    /* revealed at game-end (player didn't get it) */
+    .slot.missed {
+      border-color: #ddd;
+      background: #f5f5f5;
+    }
+    .slot.missed .slot-pos  { color: #ccc; }
+    .slot.missed .slot-name { color: #aaa; }
+
+    @keyframes pop {
+      0%   { transform: scale(1); }
+      50%  { transform: scale(1.07); }
+      100% { transform: scale(1); }
+    }
+
+    /* ── Game Over Overlay ─────────────────────────────────────── */
+    #game-over {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,20,60,0.65);
+      z-index: 100;
+      align-items: flex-start; /* don't vertically center — allow scrolling on small screens */
+      justify-content: center;
+      padding: 24px 16px;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    #game-over.visible { display: flex; }
+
+    .go-card {
+      background: white;
+      border-radius: 16px;
+      padding: 40px 44px;
+      text-align: center;
+      max-width: 400px;
+      width: 100%;
+      box-shadow: 0 12px 48px rgba(0,0,0,0.35);
+    }
+    .go-emoji  { font-size: 3.2rem; line-height: 1; margin-bottom: 14px; }
+    .go-title  { font-size: 1.65rem; font-weight: 800; color: #00338D; margin-bottom: 6px; }
+    .go-score  { font-size: 2.8rem; font-weight: 800; color: #C60C30; line-height: 1; margin: 14px 0 4px; }
+    .go-denom  { font-size: 1rem; color: #888; margin-bottom: 12px; }
+    .go-msg    { font-size: 0.95rem; color: #555; line-height: 1.55; margin-bottom: 28px; }
+
+    .play-again-btn {
+      background: #00338D;
+      color: white;
+      border: none;
+      padding: 14px 36px;
+      font-size: 1rem;
+      font-weight: 700;
+      border-radius: 9px;
+      cursor: pointer;
+      transition: background 0.2s;
+      min-height: 48px;
+      width: 100%;
+      touch-action: manipulation;
+    }
+    .play-again-btn:hover { background: #002270; }
+
+    .view-results-btn {
+      background: white;
+      color: #00338D;
+      border: 2px solid #00338D;
+      padding: 12px 28px;
+      font-size: 1rem;
+      font-weight: 700;
+      border-radius: 9px;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+      margin-top: 10px;
+      min-height: 48px;
+      width: 100%;
+      touch-action: manipulation;
+    }
+    .view-results-btn:hover { background: #eef2fb; }
+
+    .go-buttons {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+
+    footer {
+      text-align: center;
+      padding: 16px;
+      font-size: 0.76rem;
+      color: #aaa;
+      line-height: 1.6;
+    }
+
+    @media (max-width: 520px) {
+      header { padding: 14px 12px 12px; }
+      header h1 { font-size: 1.25rem; }
+      header p  { font-size: 0.82rem; }
+
+      main { padding: 12px 10px 32px; }
+
+      .controls-card {
+        padding: 12px 12px 10px;
+        border-radius: 10px;
+        /* flush with screen edge on very small phones */
+        margin-left: -10px;
+        margin-right: -10px;
+        border-radius: 0;
+      }
+
+      .top-row { gap: 8px; margin-bottom: 10px; }
+      .timer { font-size: 2rem; min-width: 4.5ch; }
+      .progress-count { font-size: 0.9rem; }
+      .progress-count .num { font-size: 1.05rem; }
+      .quit-btn { padding: 8px 12px; font-size: 0.82rem; }
+
+      /* slots: allow 2 per row on narrow screens */
+      .player-slots { gap: 6px; }
+      .slot {
+        min-width: 0;
+        flex: 1 1 calc(50% - 6px);
+        max-width: calc(50% - 6px);
+      }
+      .slot-name { font-size: 0.8rem; white-space: normal; }
+
+      .pos-group { padding: 12px 12px; }
+
+      .go-card { padding: 24px 18px; margin-top: auto; margin-bottom: auto; }
+      .go-score { font-size: 2.2rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>&#127944; Buffalo Bills Roster Quiz</h1>
+  <p>How many players can you name?</p>
+</header>
+
+<main>
+
+  <!-- ── Start Screen ── -->
+  <div id="start-screen">
+    <h2>Buffalo Bills Roster Challenge</h2>
+    <p class="desc">Think you know the Bills? Name every player on the 2024 season roster before time runs out.</p>
+    <ul class="rules">
+      <li><span class="icon">&#9200;</span><span>You have <strong>15 minutes</strong> to name as many players as you can</span></li>
+      <li><span class="icon">&#9999;&#65039;</span><span>Type a player's <strong>first name, last name, or full name</strong> — it all counts</span></li>
+      <li><span class="icon">&#9989;</span><span>Correct guesses reveal that player's card below</span></li>
+      <li><span class="icon">&#10060;</span><span>Incorrect guesses are flagged immediately</span></li>
+      <li><span class="icon">&#127937;</span><span>Click <strong>Give Up</strong> at any time to reveal all remaining answers</span></li>
+    </ul>
+    <button class="start-btn" onclick="startQuiz()">Start Quiz</button>
+  </div>
+
+  <!-- ── Quiz Screen ── -->
+  <div id="quiz-screen">
+    <div class="controls-card">
+      <div class="top-row">
+        <div class="timer" id="timer">15:00</div>
+        <div class="progress-info">
+          <div class="progress-count">
+            <span class="num" id="found-count">0</span>
+            <span> / </span>
+            <span id="total-count">0</span>
+            <span> found</span>
+          </div>
+        </div>
+        <button class="quit-btn" onclick="confirmQuit()">Give Up</button>
+      </div>
+
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+
+      <div class="input-row">
+        <input type="text" id="guess-input" placeholder="Type a player's name…"
+               autocomplete="off" spellcheck="false"
+               autocorrect="off" autocapitalize="off" inputmode="text">
+        <button class="guess-btn" id="guess-btn" onclick="handleGuess()">Guess</button>
+      </div>
+      <div id="feedback"></div>
+    </div>
+
+    <div id="roster-grid"></div>
+  </div>
+
+</main>
+
+<!-- ── Game Over Overlay ── -->
+<div id="game-over">
+  <div class="go-card">
+    <div class="go-emoji" id="go-emoji">&#127944;</div>
+    <div class="go-title" id="go-title">Time's Up!</div>
+    <div class="go-score" id="go-score">0</div>
+    <div class="go-denom" id="go-denom">out of 0 players named</div>
+    <div class="go-msg"   id="go-msg"></div>
+    <div class="go-buttons">
+      <button class="play-again-btn" onclick="location.reload()">Play Again</button>
+      <button class="view-results-btn" onclick="viewResults()">View Results</button>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Based on the 2024 Buffalo Bills active roster. Data may not reflect every roster move.
+</footer>
+
+<script>
+// ─── ROSTER DATA ────────────────────────────────────────────────────────────
+const POSITION_GROUPS = [
+  {
+    name: "Quarterbacks", abbr: "QB",
+    players: [
+      { name: "Josh Allen",         pos: "QB" },
+      { name: "Mitchell Trubisky",  pos: "QB" },
+      { name: "Kyle Allen",         pos: "QB" },
+    ]
+  },
+  {
+    name: "Running Backs", abbr: "RB",
+    players: [
+      { name: "James Cook",     pos: "RB" },
+      { name: "Ray Davis",      pos: "RB" },
+      { name: "Ty Johnson",     pos: "RB" },
+      { name: "Reggie Gilliam", pos: "FB" },
+    ]
+  },
+  {
+    name: "Wide Receivers", abbr: "WR",
+    players: [
+      { name: "Khalil Shakir",  pos: "WR" },
+      { name: "Keon Coleman",   pos: "WR" },
+      { name: "Curtis Samuel",  pos: "WR" },
+      { name: "Mack Hollins",   pos: "WR" },
+    ]
+  },
+  {
+    name: "Tight Ends", abbr: "TE",
+    players: [
+      { name: "Dalton Kincaid", pos: "TE" },
+      { name: "Dawson Knox",    pos: "TE" },
+      { name: "Quintin Morris", pos: "TE" },
+    ]
+  },
+  {
+    name: "Offensive Line", abbr: "OL",
+    players: [
+      { name: "Dion Dawkins",     pos: "LT" },
+      { name: "O'Cyrus Torrence", pos: "LG" },
+      { name: "Connor McGovern",  pos: "C"  },
+      { name: "David Edwards",    pos: "RG" },
+      { name: "Spencer Brown",    pos: "RT" },
+      { name: "Ryan Van Demark",  pos: "OT" },
+      { name: "Alec Anderson",    pos: "G"  },
+      { name: "Nick Broeker",     pos: "OT" },
+    ]
+  },
+  {
+    name: "Defensive Line", abbr: "DL",
+    players: [
+      { name: "Ed Oliver",         pos: "DT" },
+      { name: "Greg Rousseau",     pos: "DE" },
+      { name: "A.J. Epenesa",      pos: "DE" },
+      { name: "DeWayne Carter",    pos: "DT" },
+      { name: "Dawuane Smoot",     pos: "DE" },
+      { name: "Shaq Lawson",       pos: "DE" },
+      { name: "Kingsley Jonathan", pos: "DT" },
+    ]
+  },
+  {
+    name: "Linebackers", abbr: "LB",
+    players: [
+      { name: "Matt Milano",      pos: "LB" },
+      { name: "Terrel Bernard",   pos: "LB" },
+      { name: "Dorian Williams",  pos: "LB" },
+      { name: "Baylon Spector",   pos: "LB" },
+    ]
+  },
+  {
+    name: "Cornerbacks", abbr: "CB",
+    players: [
+      { name: "Rasul Douglas",    pos: "CB" },
+      { name: "Taron Johnson",    pos: "CB" },
+      { name: "Christian Benford",pos: "CB" },
+      { name: "Kaiir Elam",       pos: "CB" },
+      { name: "Ja'Marcus Ingram", pos: "CB" },
+      { name: "Cam Lewis",        pos: "CB" },
+    ]
+  },
+  {
+    name: "Safeties", abbr: "S",
+    players: [
+      { name: "Taylor Rapp",   pos: "S" },
+      { name: "Damar Hamlin",  pos: "S" },
+      { name: "Cole Bishop",   pos: "S" },
+      { name: "Jalen Elliott", pos: "S" },
+    ]
+  },
+  {
+    name: "Special Teams", abbr: "ST",
+    players: [
+      { name: "Tyler Bass",     pos: "K"  },
+      { name: "Sam Martin",     pos: "P"  },
+      { name: "Reid Ferguson",  pos: "LS" },
+    ]
+  },
+];
+
+// ─── FLATTEN ROSTER ─────────────────────────────────────────────────────────
+const PLAYERS = [];
+POSITION_GROUPS.forEach((g, gi) => {
+  g.players.forEach((p, pi) => {
+    PLAYERS.push({ ...p, groupIndex: gi, playerIndex: pi });
+  });
+});
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+const found   = new Set();
+let secondsLeft   = 900;
+let timerInterval = null;
+let isGameOver    = false;
+
+// ─── NORMALIZE ───────────────────────────────────────────────────────────────
+function norm(str) {
+  return str.toLowerCase()
+    .replace(/['.]/g, '')     // drop apostrophes & periods (A.J. → aj, O'Cyrus → ocyrus)
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// ─── MATCH LOGIC ─────────────────────────────────────────────────────────────
+function findMatch(raw) {
+  const g = norm(raw);
+  if (!g) return { type: 'empty' };
+
+  // 1. Exact full-name match (highest priority)
+  for (let i = 0; i < PLAYERS.length; i++) {
+    if (found.has(i)) continue;
+    if (norm(PLAYERS[i].name) === g) return { type: 'found', index: i };
+  }
+
+  // 2. Last-name match — only if unique among remaining
+  const byLast = [];
+  for (let i = 0; i < PLAYERS.length; i++) {
+    if (found.has(i)) continue;
+    const parts = PLAYERS[i].name.split(' ');
+    if (norm(parts.slice(1).join(' ')) === g) byLast.push(i);
+  }
+  if (byLast.length === 1) return { type: 'found',    index: byLast[0] };
+  if (byLast.length  > 1) return { type: 'ambiguous', g };
+
+  // 3. First-name match — only if unique among remaining
+  const byFirst = [];
+  for (let i = 0; i < PLAYERS.length; i++) {
+    if (found.has(i)) continue;
+    if (norm(PLAYERS[i].name.split(' ')[0]) === g) byFirst.push(i);
+  }
+  if (byFirst.length === 1) return { type: 'found',    index: byFirst[0] };
+  if (byFirst.length  > 1) return { type: 'ambiguous', g };
+
+  // 4. Already found?
+  for (let i = 0; i < PLAYERS.length; i++) {
+    if (!found.has(i)) continue;
+    const parts = PLAYERS[i].name.split(' ');
+    if (norm(PLAYERS[i].name) === g ||
+        norm(parts[0]) === g ||
+        norm(parts.slice(1).join(' ')) === g) {
+      return { type: 'already' };
+    }
+  }
+
+  return { type: 'miss' };
+}
+
+// ─── SLOT HELPERS ────────────────────────────────────────────────────────────
+function slotId(i) { return `slot-${i}`; }
+
+function revealSlot(i, cls) {
+  const el = document.getElementById(slotId(i));
+  if (!el) return;
+  el.classList.remove('found', 'missed');
+  el.classList.add(cls);
+  el.querySelector('.slot-name').textContent = PLAYERS[i].name;
+}
+
+// ─── HANDLE GUESS ────────────────────────────────────────────────────────────
+function handleGuess() {
+  if (isGameOver) return;
+  const input = document.getElementById('guess-input');
+  const raw   = input.value.trim();
+  if (!raw) return;
+
+  const result = findMatch(raw);
+
+  if (result.type === 'found') {
+    found.add(result.index);
+    revealSlot(result.index, 'found');
+    updateProgress();
+    showFeedback('correct', `&#10003; ${PLAYERS[result.index].name}`);
+    flashInput('correct');
+    input.value = '';
+    input.focus();
+    // Check win
+    if (found.size === PLAYERS.length) endGame('complete');
+
+  } else if (result.type === 'ambiguous') {
+    showFeedback('warn', `&#9888; Could be multiple players — try the full name`);
+    flashInput('wrong');
+
+  } else if (result.type === 'already') {
+    showFeedback('warn', `&#9888; Already found!`);
+    flashInput('wrong');
+    input.select();
+
+  } else {
+    showFeedback('wrong', `&#10007; Not on the roster`);
+    flashInput('wrong');
+    input.select();
+  }
+}
+
+// ─── FEEDBACK & FLASH ────────────────────────────────────────────────────────
+let feedbackTimer = null;
+function showFeedback(cls, html) {
+  const el = document.getElementById('feedback');
+  el.className = cls;
+  el.innerHTML = html;
+  clearTimeout(feedbackTimer);
+  feedbackTimer = setTimeout(() => {
+    el.innerHTML = '';
+    el.className = '';
+  }, 1800);
+}
+
+let flashTimer = null;
+function flashInput(cls) {
+  const el = document.getElementById('guess-input');
+  el.classList.remove('flash-correct', 'flash-wrong');
+  el.classList.add(`flash-${cls}`);
+  clearTimeout(flashTimer);
+  flashTimer = setTimeout(() => {
+    el.classList.remove('flash-correct', 'flash-wrong');
+  }, 600);
+}
+
+// ─── PROGRESS ────────────────────────────────────────────────────────────────
+function updateProgress() {
+  const n = found.size;
+  const t = PLAYERS.length;
+  document.getElementById('found-count').textContent = n;
+  document.getElementById('progress-bar').style.width = `${(n / t) * 100}%`;
+
+  // Update per-group tallies
+  POSITION_GROUPS.forEach((g, gi) => {
+    const groupPlayers = PLAYERS.filter(p => p.groupIndex === gi);
+    const groupFound   = groupPlayers.filter((_, li) => {
+      const globalIdx = PLAYERS.indexOf(groupPlayers[li]);
+      return found.has(globalIdx);
+    });
+    // recalculate by iterating PLAYERS
+    let gf = 0;
+    PLAYERS.forEach((p, i) => { if (p.groupIndex === gi && found.has(i)) gf++; });
+    const tallyEl = document.getElementById(`tally-${gi}`);
+    if (tallyEl) tallyEl.textContent = `${gf} / ${g.players.length}`;
+  });
+}
+
+// ─── TIMER ───────────────────────────────────────────────────────────────────
+function tickTimer() {
+  secondsLeft--;
+  if (secondsLeft <= 0) {
+    secondsLeft = 0;
+    renderTimer();
+    endGame('timeout');
+    return;
+  }
+  renderTimer();
+}
+
+function renderTimer() {
+  const m = Math.floor(secondsLeft / 60);
+  const s = secondsLeft % 60;
+  const el = document.getElementById('timer');
+  el.textContent = `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  el.classList.toggle('warning', secondsLeft <= 60);
+}
+
+// ─── END GAME ────────────────────────────────────────────────────────────────
+function endGame(reason) {
+  if (isGameOver) return;
+  isGameOver = true;
+  clearInterval(timerInterval);
+
+  // Disable input
+  document.getElementById('guess-input').disabled = true;
+  document.getElementById('guess-btn').disabled   = true;
+
+  // Reveal all missed slots
+  PLAYERS.forEach((p, i) => {
+    if (!found.has(i)) revealSlot(i, 'missed');
+  });
+
+  // Populate overlay
+  const n = found.size;
+  const t = PLAYERS.length;
+  const pct = n / t;
+
+  let emoji, title, msg;
+  if (reason === 'complete') {
+    emoji = '&#127881;'; title = 'Perfect Score!';
+    msg = `You named every single player on the roster. Legendary Bills fan.`;
+  } else if (reason === 'quit') {
+    emoji = '&#127944;'; title = 'Better luck next time';
+    msg = `You got ${n} out of ${t} before giving up. The rest are revealed below.`;
+  } else {
+    emoji = '&#9200;'; title = "Time's Up!";
+    if (pct >= 0.8)      msg = `So close! ${n} of ${t} — you clearly know your Bills.`;
+    else if (pct >= 0.5) msg = `Decent effort — ${n} of ${t}. Study the depth chart and try again.`;
+    else                 msg = `${n} of ${t}. Josh Allen would like a word.`;
+  }
+
+  document.getElementById('go-emoji').innerHTML  = emoji;
+  document.getElementById('go-title').textContent = title;
+  document.getElementById('go-score').textContent = n;
+  document.getElementById('go-denom').textContent = `out of ${t} players named`;
+  document.getElementById('go-msg').textContent   = msg;
+
+  document.getElementById('game-over').classList.add('visible');
+}
+
+function confirmQuit() {
+  if (isGameOver) return;
+  endGame('quit');
+}
+
+function viewResults() {
+  document.getElementById('game-over').classList.remove('visible');
+  document.getElementById('guess-input').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ─── BUILD DOM ───────────────────────────────────────────────────────────────
+function buildGrid() {
+  const grid = document.getElementById('roster-grid');
+  grid.innerHTML = '';
+
+  POSITION_GROUPS.forEach((g, gi) => {
+    const section = document.createElement('div');
+    section.className = 'pos-group';
+
+    // Header
+    const header = document.createElement('div');
+    header.className = 'pos-group-header';
+    header.innerHTML = `
+      <span class="pos-badge">${g.abbr}</span>
+      <span class="pos-group-name">${g.name}</span>
+      <span class="pos-group-tally" id="tally-${gi}">0 / ${g.players.length}</span>
+    `;
+    section.appendChild(header);
+
+    // Slots
+    const wrap = document.createElement('div');
+    wrap.className = 'player-slots';
+
+    g.players.forEach((p, pi) => {
+      // find global index
+      const globalIdx = PLAYERS.findIndex(x => x.groupIndex === gi && x.playerIndex === pi);
+      const slot = document.createElement('div');
+      slot.className = 'slot';
+      slot.id = slotId(globalIdx);
+      slot.innerHTML = `
+        <div class="slot-pos">${p.pos}</div>
+        <div class="slot-name">— — —</div>
+      `;
+      wrap.appendChild(slot);
+    });
+
+    section.appendChild(wrap);
+    grid.appendChild(section);
+  });
+}
+
+// ─── START ────────────────────────────────────────────────────────────────────
+function startQuiz() {
+  document.getElementById('start-screen').style.display = 'none';
+  document.getElementById('quiz-screen').style.display  = 'block';
+
+  document.getElementById('total-count').textContent = PLAYERS.length;
+  buildGrid();
+  renderTimer();
+
+  timerInterval = setInterval(tickTimer, 1000);
+  document.getElementById('guess-input').focus();
+}
+
+// ─── KEYBOARD ─────────────────────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !isGameOver) handleGuess();
+});
+</script>
+
+</body>
+</html>
